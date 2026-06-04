@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>To-Do-App</title>
+    <style>
+        body{
+            font-family: Arial, Helvetica, sans-serif;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            display: flex;
+            justify-content: center;
+            margin-top: 20px;
+            color: white;
+        }
+        .container{
+            width: 380px;
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(10px);
+            padding: 20px;
+            border-radius: 15px;
+        }
+        h2 { text-align: center;}
+        input, select, button {
+            width: 100%;
+            padding: 8px;
+            margin: 5px 0;
+            border-radius: 5px;
+            border: none;
+        }
+        button{ cursor: pointer;}
+        .task{
+            background: rgba(0,0,0,0.3);
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 10px;
+        }
+        .completed span{
+            text-decoration: line-through;
+            color: lightgray;
+        }
+        .top{
+            display: flex;
+            justify-content: space-between;
+        }
+        .progress{
+            height: 8px;
+            background: gray;
+            border-radius: 5px;
+            margin-top: 10px;
+        }
+        .progress-bar{
+            height: 100%;
+            background: limegreen;
+            width: 0%;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2> To-Do </h2>
+        <input type="text" id="taskInput" placeholder="Enter task">
+        <input type="date" id="deadline">
+        <select id="category">
+            <option> Study </option>
+            <option>Personal</option>
+            <option>Work</option>
+        </select>
+        <select id="priority">
+            <option value="low">Low</option>
+            <option value="medium">Medium</option>
+            <option value="high">High</option>
+        </select>
+        <button onclick="addTask()">Add Task</button>
+        <input type="text" id="search" placeholder="Search..." onkeyup="renderTasks()">
+        <select onchange="renderTasks()" id="filter">
+            <option value="all">All</option>
+            <option value="completed">Completed</option>
+            <option value="pending">Pending</option>
+        </select>
+        <div class="progress">
+            <div class="progress-bar" id="progressBar"></div>
+        </div>
+        <div id="taskList"></div>
+    </div>
+    <script>
+        let tasks = JSON.parse(localStorage.getItem("tasks")) || [];
+        function addTask(){
+            let text = taskInput.value;
+            let date = deadline.value;
+            let category = document.getElementById("category").value;
+            let priority = document.getElementById("priority").value;
+            if(!text) return;
+            tasks.push({text, date, category, priority, completed:false});
+            save();
+            renderTasks();
+            taskInput.value="";
+            deadline.value="";
+        }
+        function save(){
+            localStorage.setItem("tasks", JSON.stringify(tasks));
+        }
+        function renderTasks(){
+            let list = document.getElementById("taskList");
+            list.innerHTML = "";
+            let search = document.getElementById("search").value.toLowerCase();
+            let filter = document.getElementById("filter").value;
+            let completedCount = 0;
+            tasks.forEach((task, index) => {
+                if(task.text.toLowerCase().includes(search)===false) return;
+                if(filter==="completed" && !task.completed) return;
+                if(filter==="pending" && task.completed) return;
+                if(task.completed) completedCount++;
+                let div = document.createElement("div");
+                div.className = "task";
+                if(task.completed) div.classList.add("completed");
+
+                div.innerHTML = `<div class="top">
+                    <div>
+                        <input type="checkbox" ${task.completed ? "checked" : ""}
+                        onchange="toggle(${index})">
+                        <span>${task.text}</span>
+                    </div>
+                    <div>
+                        <button onclick="edit(${index})">✎</button>
+                        <button onclick="del(${index})">❌</button>
+                    </div>
+                </div>
+                <small>${task.category} | ${task.priority} | ${task.date}</small>`;
+                list.appendChild(div);
+            });
+            updateProgress(completedCount);
+        }
+        function toggle(i){
+            tasks[i].completed = !tasks[i].completed;
+            save();
+            renderTasks();
+        }
+        function del(i){
+            tasks.splice(i,1);
+            save();
+            renderTasks();
+        }
+        function edit(i){
+            let newText = prompt("Edit task", tasks[i].text);
+            if(newText) tasks[i].text = newText;
+            save();
+            renderTasks();
+        }
+        function updateProgress(done){
+            let percent = tasks.length ? (done/ tasks.length)*100 :0;
+            document.getElementById("progressBar").style.width = percent + "%";
+            if("Notification" in window) {
+                Notification.requestPermission();
+            }
+            setInterval(()=>{
+                let today = new Date().toISOString().split("T")[0];
+                tasks.forEach(task=>{
+                    if(task.date===today&& !task.completed){
+                        new Notification("Reminder: "+task.text);
+                    }
+                });
+            }, 60000);
+
+        }
+        renderTasks();
+    </script>
+</body>
+</html>
